@@ -1,0 +1,8 @@
+#Mac filesystem
+.DS_Store
+
+#ViM temp-files
+*.swp
+*.swo
+
+crawl.sh
