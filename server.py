@@ -14,7 +14,21 @@ import uuid
 import sys, os
 import ssl
 
+def downloadMp3(path):
+    #download and convert to mp3
+    recording = path[19:]
+
+    download = 'http://fritz.box/lua/photo.lua?sid=' + sid + '&myabfile=' + recording
+    myfile =  urlopen(download)
+    with open('temp.wav','wb') as output:
+        output.write(myfile.read())
+
+    os.system('lame -b 256 temp.wav ./'+ guid + '.mp3')
+
 def printFeed(s):
+    #print rss feed
+
+    #get correct voicemail adress + session id from fritz.box
     os.system('./crawl.sh')
     xmldoc = minidom.parse('./response.xml')
     itemlist = xmldoc.getElementsByTagName('NewURL')
@@ -29,6 +43,7 @@ def printFeed(s):
     url = itemlist[0].childNodes[0].nodeValue
     sid = url[47:-11];
 
+    #get list of messages for that voicemail
     dom = minidom.parse(urlopen(url))
 
     for message in dom.getElementsByTagName('Message'):
@@ -38,6 +53,7 @@ def printFeed(s):
         if len(names) > 0:
             fromName = names[0].childNodes[0].nodeValue
         else:
+            #if name not known, user caller-number
             numbers = message.getElementsByTagName('Number')
             if len(numbers) > 0:
                 fromName = numbers[0].childNodes[0].nodeValue
@@ -49,15 +65,7 @@ def printFeed(s):
 
         if not os.path.isfile("./"+ guid +".mp3"): 
             path = message.getElementsByTagName('Path')[0].childNodes[0].nodeValue
-            recording = path[19:]
-
-            #download and convert to mp3
-            download = 'http://fritz.box/lua/photo.lua?sid=' + sid + '&myabfile=' + recording
-            myfile =  urlopen(download)
-            with open('temp.wav','wb') as output:
-                output.write(myfile.read())
-
-            os.system('lame -b 256 temp.wav ./'+ guid + '.mp3')
+            downloadMp3(path)
 
         size = os.path.getsize("./"+ guid +".mp3")
 
@@ -98,19 +106,15 @@ class S(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'audio/mpeg')
             self.end_headers()
 
-            print os.path.normpath(self.path)
-            print os.path.abspath(self.path)
-
             # todo sanitize path better!
             if not os.path.isfile('.' + self.path) or \
                     os.path.normpath(self.path) != self.path: 
-                self.wfile.write("File not found!")
+                print "File not found!"
                 f = open('./fail.mp3', 'rb')
                 self.wfile.write(f.read())
-                return
-
-            f = open('.' + self.path, 'rb')
-            self.wfile.write(f.read())
+            else:
+                f = open('.' + self.path, 'rb')
+                self.wfile.write(f.read())
             
         else:
             self.wfile.write("Nope!")
